@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Built APKs — these are attached to GitHub Releases, not committed.
+# The bundled ML Kit model makes each one ~20MB, which git should not carry.
+*.apk
+*.aab
+
+# Signing material — never commit these
+*.jks
+*.keystore
+keystore.properties
+android/key.properties
+
+# Local machine config
+android/local.properties
+.env
+.env.local
+
+# Exported data backups (these contain real financial records)
+paisa-book-backup-*.json
+
+# Editor / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+*.log

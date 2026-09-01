@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="scan_title">Line up your card</string>
+    <string name="scan_looking">Looking for the card number…</string>
+    <string name="scan_holding">Reading …%1$s — hold steady</string>
+    <string name="scan_got_it">Got it — card ending %1$s</string>
+    <string name="scan_camera_error">Could not start the camera</string>
+    <string name="scan_privacy">Only the last 4 digits are saved. Nothing is uploaded.</string>
+    <string name="scan_cancel">Cancel</string>
+</resources>

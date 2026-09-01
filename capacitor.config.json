@@ -1,0 +1,18 @@
+{
+  "appId": "com.anil.paisabook",
+  "appName": "Paisa Book",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#0f1115"
+  },
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": true,
+      "backgroundColor": "#0f1115"
+    }
+  }
+}

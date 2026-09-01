@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0f1115">
+<title>Paisa Book</title>
+<link rel="stylesheet" href="styles.css?v=5">
+</head>
+<body>
+
+<header id="topbar">
+  <div class="tb-left">
+    <div id="screenTitle">Overview</div>
+    <div id="screenSub" class="sub"></div>
+  </div>
+  <div class="month-nav" id="monthNav">
+    <button class="mn-btn" id="prevMonth" aria-label="Previous month">&#8249;</button>
+    <button class="mn-label" id="monthLabel">—</button>
+    <button class="mn-btn" id="nextMonth" aria-label="Next month">&#8250;</button>
+  </div>
+</header>
+
+<main id="view"></main>
+
+<button id="fab" aria-label="Add">+</button>
+
+<nav id="tabbar">
+  <button class="tab active" data-tab="home"><span class="ti">&#9632;</span><span>Home</span></button>
+  <button class="tab" data-tab="spends"><span class="ti">&#8681;</span><span>Spends</span></button>
+  <button class="tab" data-tab="cards"><span class="ti">&#9646;&#9646;</span><span>Cards</span></button>
+  <button class="tab" data-tab="friends"><span class="ti">&#9679;&#9679;</span><span>Friends</span></button>
+  <button class="tab" data-tab="bills"><span class="ti">&#8635;</span><span>Bills</span></button>
+</nav>
+
+<div id="sheetWrap" class="hidden" aria-hidden="true">
+  <div id="sheetBackdrop"></div>
+  <section id="sheet" role="dialog" aria-modal="true">
+    <div class="sheet-grip"></div>
+    <div class="sheet-head">
+      <h2 id="sheetTitle">Add</h2>
+      <button id="sheetClose" aria-label="Close">&#215;</button>
+    </div>
+    <div id="sheetBody"></div>
+  </section>
+</div>
+
+<div id="toast" class="hidden"></div>
+
+<script src="app.js?v=5"></script>
+</body>
+</html>

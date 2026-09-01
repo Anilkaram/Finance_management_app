@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Paisa Book</string>
+    <string name="title_activity_main">Paisa Book</string>
+    <string name="package_name">com.anil.paisabook</string>
+    <string name="custom_url_scheme">com.anil.paisabook</string>
+</resources>

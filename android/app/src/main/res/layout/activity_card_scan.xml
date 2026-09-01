@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0F1115">
+
+    <androidx.camera.view.PreviewView
+        android:id="@+id/preview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/scan_title"
+            android:textColor="#FFFFFF"
+            android:textSize="17sp"
+            android:textStyle="bold"
+            android:shadowColor="#000000"
+            android:shadowRadius="6"
+            android:layout_marginBottom="18dp" />
+
+        <!-- 1.586:1, the ID-1 aspect ratio of a payment card -->
+        <View
+            android:layout_width="320dp"
+            android:layout_height="202dp"
+            android:background="@drawable/card_scan_frame"
+            android:layout_marginBottom="18dp" />
+
+        <TextView
+            android:id="@+id/status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/scan_looking"
+            android:textColor="#E6E9EF"
+            android:textSize="14sp"
+            android:gravity="center"
+            android:shadowColor="#000000"
+            android:shadowRadius="6" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/scan_privacy"
+            android:textColor="#8B93A7"
+            android:textSize="12sp"
+            android:gravity="center"
+            android:layout_marginTop="10dp"
+            android:shadowColor="#000000"
+            android:shadowRadius="6" />
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/cancel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="34dp"
+        android:text="@string/scan_cancel"
+        android:textColor="#FFFFFF"
+        android:background="@drawable/card_scan_cancel_bg"
+        android:paddingStart="28dp"
+        android:paddingEnd="28dp" />
+
+</FrameLayout>
