@@ -1,6 +1,6 @@
 {
   "name": "paisa-book",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Offline Android app for tracking spends, credit-card dues and interest, friend lending, and recurring bills (INR)",
   "scripts": {

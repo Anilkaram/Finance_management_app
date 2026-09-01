@@ -50,6 +50,7 @@ function load() {
     if (!d.cats || !d.cats.length) d.cats = clone(DEFAULT_CATS);
     d.cats.forEach(c => { if (!c.kind) c.kind = 'expense'; });
     INCOME_CATS.forEach(ic => { if (!d.cats.some(c => c.id === ic.id)) d.cats.push(clone(ic)); });
+    (d.cards || []).forEach(c => { if (c.expiry) c.expiry = normalizeExpiry(c.expiry); });
     return d;
   } catch (e) {
     console.error('load failed', e);
@@ -163,6 +164,12 @@ function cardInterestTotal(id) {
   return S.cardEvents.filter(e => e.cardId === id && (e.kind === 'interest' || e.kind === 'fee'))
                      .reduce((a, e) => a + e.amt, 0);
 }
+/* Accept 1232, 12-32 or 12/32 and settle on MM/YY, so the expiry can actually be compared */
+function normalizeExpiry(v) {
+  const d = String(v == null ? '' : v).replace(/[^0-9]/g, '').slice(0, 4);
+  return d.length < 3 ? d : d.slice(0, 2) + '/' + d.slice(2);
+}
+
 /* A card is valid through the end of its expiry month */
 function expiryPast(exp) {
   if (!exp || !/^\d{2}\/\d{2}$/.test(exp)) return false;
@@ -197,13 +204,19 @@ function cardDues(id) {
   if (entered) {
     let paidSince = 0, chargedSince = 0;
     S.txns.forEach(t => {
-      if (t.src !== id || t.date <= entered.date) return;
+      if (t.src !== id || t.date <= entered.date) return;   // a spend on the statement date is billed
       chargedSince += t.kind === 'expense' ? t.amt : -t.amt;
     });
     S.cardEvents.forEach(e => {
-      if (e.cardId !== id || e.date <= entered.date) return;
-      if (e.kind === 'payment') paidSince += e.amt;
-      else if (e.kind !== 'statement') chargedSince += e.amt;
+      if (e.cardId !== id) return;
+      if (e.kind === 'payment') {
+        // Paying on the statement date itself is settling that bill, not part of it. Enter a
+        // statement and clear it the same day and the payment has to count, or the bill would
+        // stay due forever. Payments before the date are already inside the bank's total.
+        if (e.date >= entered.date) paidSince += e.amt;
+      } else if (e.kind !== 'statement' && e.date > entered.date) {
+        chargedSince += e.amt;
+      }
     });
     const rawDue = entered.amt - paidSince;          // negative once you overpay the bill
     return {
@@ -229,8 +242,8 @@ function cardDues(id) {
   S.cardEvents.forEach(e => {
     if (e.cardId !== id) return;
     if (e.kind === 'payment') {
-      if (e.date <= stmt) billed -= e.amt; else paidSince += e.amt;
-    } else if (e.date <= stmt) {
+      if (e.date < stmt) billed -= e.amt; else paidSince += e.amt;
+    } else if (e.kind !== 'statement' && e.date <= stmt) {
       billed += e.amt;
     }
   });
@@ -869,6 +882,12 @@ function cardForm(id) {
     ${c ? `<button class="btn danger" id="cDel">Delete card</button>` : ''}
   `, () => {
     let scannedNetwork = '';
+    const expIn = $('#cExpiry');
+    if (expIn) expIn.addEventListener('input', () => {
+      const pos = expIn.value.length;
+      expIn.value = normalizeExpiry(expIn.value);
+      if (pos < expIn.value.length) expIn.setSelectionRange(expIn.value.length, expIn.value.length);
+    });
     const scanBtn = $('#cScan');
     if (scanBtn) scanBtn.addEventListener('click', () => {
       const sc = scanner();
@@ -906,7 +925,7 @@ function cardForm(id) {
         bank: $('#cBank').value.trim(), last4: $('#cLast4').value.trim(),
         limit: num($('#cLimit').value),
         stmtDay: num($('#cStmt').value) || null, dueDay: num($('#cDue').value) || null,
-        expiry: $('#cExpiry').value.trim(),
+        expiry: normalizeExpiry($('#cExpiry').value),
         network: scannedNetwork || (c ? c.network : '') || ''
       };
       if (c) S.cards[S.cards.findIndex(x => x.id === c.id)] = rec;
@@ -1029,10 +1048,15 @@ function cardDetail(id) {
     <button class="btn ghost" id="aEdit" style="margin-top:12px">Edit card details</button>
   `, () => {
     if ($('#aClear')) $('#aClear').addEventListener('click', () => {
-      const amt = dues.due;
+      const btn = $('#aClear');
+      if (btn.disabled) return;
+      // re-read rather than trusting the value captured when this sheet was built
+      const amt = cardDues(id).due;
+      if (amt <= 0) { toast('Already cleared'); render(); cardDetail(id); return; }
       if (!confirm(`Record a payment of ${money(amt)} for ${c.name} today?
 
 This clears the amount due. Anything spent since the statement stays as unbilled.`)) return;
+      btn.disabled = true;
       S.cardEvents.push({ id: uid('e'), cardId: id, kind: 'payment', amt, date: todayISO(), note: 'Bill paid' });
       save(); render(); cardDetail(id); toast('Bill marked paid');
     });
