@@ -7,8 +7,8 @@ android {
         applicationId "com.anil.paisabook"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 3
-        versionName "1.1.0"
+        versionCode 4
+        versionName "1.2.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         ndk {
             // The bundled ML Kit OCR ships a ~11MB native lib per ABI. Real devices are ARM;

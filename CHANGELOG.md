@@ -3,6 +3,21 @@
 Notable changes to Paisa Book. Versions follow [semantic versioning](https://semver.org):
 `MAJOR.MINOR.PATCH` in `versionName`, with `versionCode` incremented by one per release.
 
+## [1.2.0] — 2026-09-02
+
+### Added
+- **Gym & Fitness** category, available for spends, bills and EMIs.
+
+### Changed
+- **Statement date, payment due date and bill due date are now calendar pickers** instead of
+  a number to type. Pick any date and the app takes the day from it — these repeat monthly,
+  so the day is what is stored. Each field says what it means underneath, e.g. "Repeats on
+  the 8th of every month", and a date after the 28th adds "shorter months use their last
+  day". Reopening a card prefills the picker with the next occurrence rather than a stale
+  date.
+- Categories added in future versions are backfilled into existing saves automatically, and
+  slotted in before "Other" so it stays at the end of the list.
+
 ## [1.1.0] — 2026-09-02
 
 ### Added
@@ -84,6 +99,7 @@ arrives as one commit rather than as separate history.
 - Everything stored on-device. No account, no server, no analytics, no network requests.
 - JSON export/import for backup, written to Documents and shareable.
 
+[1.2.0]: https://github.com/Anilkaram/Finance_management_app/releases/tag/v1.2.0
 [1.1.0]: https://github.com/Anilkaram/Finance_management_app/releases/tag/v1.1.0
 [1.0.1]: https://github.com/Anilkaram/Finance_management_app/releases/tag/v1.0.1
 [1.0.0]: https://github.com/Anilkaram/Finance_management_app/releases/tag/v1.0.0

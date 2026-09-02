@@ -16,6 +16,7 @@ const DEFAULT_CATS = [
   { id: 'health',   name: 'Health',           color: '#4ecdc4', kind: 'expense' },
   { id: 'ent',      name: 'Entertainment',    color: '#ffd166', kind: 'expense' },
   { id: 'emi',      name: 'EMI & Loans',      color: '#ff5f6d', kind: 'expense' },
+  { id: 'fitness',  name: 'Gym & Fitness',    color: '#a3e635', kind: 'expense' },
   { id: 'other',    name: 'Other',            color: '#8b93a7', kind: 'expense' }
 ];
 
@@ -49,7 +50,12 @@ function load() {
     for (const k in BLANK) if (d[k] === undefined) d[k] = clone(BLANK[k]);
     if (!d.cats || !d.cats.length) d.cats = clone(DEFAULT_CATS);
     d.cats.forEach(c => { if (!c.kind) c.kind = 'expense'; });
-    INCOME_CATS.forEach(ic => { if (!d.cats.some(c => c.id === ic.id)) d.cats.push(clone(ic)); });
+    DEFAULT_CATS.concat(INCOME_CATS).forEach(def => {
+      if (d.cats.some(c => c.id === def.id)) return;
+      const otherAt = def.kind === 'expense' ? d.cats.findIndex(c => c.id === 'other') : -1;
+      if (otherAt >= 0) d.cats.splice(otherAt, 0, clone(def));
+      else d.cats.push(clone(def));
+    });
     (d.cards || []).forEach(c => { if (c.expiry) c.expiry = normalizeExpiry(c.expiry); });
     return d;
   } catch (e) {
@@ -941,9 +947,13 @@ function cardForm(id) {
     </div>
     <div id="cNetHint" class="row-s" style="margin:-6px 2px 13px">${c && c.network ? esc(c.network) + ' card' : ''}</div>
     <div class="f"><label>Credit limit</label><input id="cLimit" type="number" inputmode="decimal" placeholder="200000" value="${c && c.limit ? c.limit : ''}"></div>
-    <div class="frow">
-      <div class="f"><label>Statement day</label><input id="cStmt" type="number" inputmode="numeric" min="1" max="31" placeholder="18" value="${c && c.stmtDay ? c.stmtDay : ''}"></div>
-      <div class="f"><label>Payment due day</label><input id="cDue" type="number" inputmode="numeric" min="1" max="31" placeholder="8" value="${c && c.dueDay ? c.dueDay : ''}"></div>
+    <div class="f"><label>Statement date</label>
+      <input id="cStmt" type="date" value="${c && c.stmtDay ? dayToDateValue(c.stmtDay) : ''}">
+      <div class="row-s" id="cStmtHint" style="margin-top:6px"></div>
+    </div>
+    <div class="f"><label>Payment due date</label>
+      <input id="cDue" type="date" value="${c && c.dueDay ? dayToDateValue(c.dueDay) : ''}">
+      <div class="row-s" id="cDueHint" style="margin-top:6px"></div>
     </div>
     ${!c ? `<div class="f"><label>Current outstanding (optional)</label>
       <input id="cOpen" type="number" inputmode="decimal" placeholder="0" >
@@ -972,6 +982,9 @@ function cardForm(id) {
       syncFromNumber();
     });
     syncFromNumber();
+
+    bindRepeatField('#cStmt', '#cStmtHint');
+    bindRepeatField('#cDue', '#cDueHint');
 
     const cvvIn = $('#cCvv');
     cvvIn.addEventListener('input', () => {
@@ -1021,7 +1034,7 @@ function cardForm(id) {
         id: c ? c.id : uid('c'), name,
         bank: $('#cBank').value.trim(), last4: $('#cLast4').value.trim(),
         limit: num($('#cLimit').value),
-        stmtDay: num($('#cStmt').value) || null, dueDay: num($('#cDue').value) || null,
+        stmtDay: dayFromDateValue($('#cStmt').value), dueDay: dayFromDateValue($('#cDue').value),
         expiry: normalizeExpiry($('#cExpiry').value),
         number: panDigits($('#cNumber').value),
         cvv: $('#cCvv').value.replace(/[^0-9]/g, '').slice(0, 4),
@@ -1225,6 +1238,29 @@ This clears the amount due. Anything spent since the statement stays as unbilled
   });
 }
 function getOrdinal(n) { const s = ['th','st','nd','rd'], v = n % 100; return s[(v - 20) % 10] || s[v] || s[0]; }
+
+/* ---------------- recurring day-of-month fields ----------------
+   Statement and due dates repeat every month, so what gets stored is the day. The input is
+   a real date picker for choosing it, and these convert between the two. */
+const dayToDateValue = day => (day ? nextOccurrence(Number(day)) : '');
+const dayFromDateValue = v => (v && v.length >= 10 ? Number(v.slice(8, 10)) : null);
+
+function repeatHint(day) {
+  if (!day) return '';
+  const d = Number(day);
+  let t = `Repeats on the ${d}${getOrdinal(d)} of every month`;
+  if (d > 28) t += ' — shorter months use their last day';
+  return t + '.';
+}
+/** Wire a date input so picking any date updates its "repeats on" hint. */
+function bindRepeatField(inputSel, hintSel) {
+  const el = $(inputSel), hint = $(hintSel);
+  if (!el || !hint) return;
+  const sync = () => { hint.textContent = repeatHint(dayFromDateValue(el.value)); };
+  el.addEventListener('change', sync);
+  el.addEventListener('input', sync);
+  sync();
+}
 
 function cardEventForm(cardId, kind, eventId) {
   const e = eventId ? S.cardEvents.find(x => x.id === eventId) : null;
@@ -1435,12 +1471,13 @@ function billForm(id) {
     <div class="f"><label>Name</label><input id="bName" type="text" placeholder="e.g. House rent" value="${b ? esc(b.name) : ''}"></div>
     <div class="f"><label>Amount per month</label>
       <input id="bAmt" class="amt-in" type="number" inputmode="decimal" step="0.01" placeholder="0" value="${b ? b.amt : ''}"></div>
-    <div class="frow">
-      <div class="f"><label>Due day of month</label><input id="bDay" type="number" inputmode="numeric" min="1" max="31" placeholder="5" value="${b ? b.dueDay : ''}"></div>
-      <div class="f"><label>Category</label><select id="bCat">
-        ${catsFor('expense').map(c => `<option value="${c.id}" ${b && b.cat === c.id ? 'selected' : (!b && c.id === 'bills' ? 'selected' : '')}>${esc(c.name)}</option>`).join('')}
-      </select></div>
+    <div class="f"><label>Due date</label>
+      <input id="bDay" type="date" value="${b && b.dueDay ? dayToDateValue(b.dueDay) : ''}">
+      <div class="row-s" id="bDayHint" style="margin-top:6px"></div>
     </div>
+    <div class="f"><label>Category</label><select id="bCat">
+      ${catsFor('expense').map(c => `<option value="${c.id}" ${b && b.cat === c.id ? 'selected' : (!b && c.id === 'bills' ? 'selected' : '')}>${esc(c.name)}</option>`).join('')}
+    </select></div>
     <div class="f"><label>Pay from</label><select id="bSrc">
       ${srcOpts.map(([v, l]) => `<option value="${v}" ${b && b.src === v ? 'selected' : ''}>${esc(l)}</option>`).join('')}
     </select></div>
@@ -1454,14 +1491,15 @@ function billForm(id) {
     ${b ? `<button class="btn danger" id="bDel">Delete</button>` : ''}
   `, () => {
     const getKind = seg('#bKind');
+    bindRepeatField('#bDay', '#bDayHint');
     $('#bKind').addEventListener('segchange', ev => $('#emiBox').classList.toggle('hidden', ev.detail !== 'emi'));
     $('#bSave').addEventListener('click', () => {
       const name = $('#bName').value.trim();
       const amt = num($('#bAmt').value);
-      const day = num($('#bDay').value);
+      const day = dayFromDateValue($('#bDay').value);
       if (!name) return toast('Give it a name');
       if (amt <= 0) return toast('Enter an amount');
-      if (day < 1 || day > 31) return toast('Due day must be 1–31');
+      if (!day) return toast('Pick a due date');
       const k = getKind();
       const rec = {
         id: b ? b.id : uid('b'), name, amt, dueDay: day, kind: k,

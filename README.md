@@ -19,7 +19,9 @@ swaps the list to income types (Salary, Business & Freelance, Interest & Dividen
 & Cashback, Rent received, Gift, Other income) and relabels the source field to
 "Received in". Only expense categories appear in the spend breakdown and on bills.
 
-**Credit cards** — one entry per card with limit, statement day and payment due day.
+**Credit cards** — one entry per card with limit, statement date and payment due date.
+Those two are calendar pickers: pick any date and the day is taken from it, since the cycle
+repeats monthly. Picking the 31st means shorter months fall back to their last day.
 
 Three different numbers, kept apart the way the bank keeps them apart:
 
