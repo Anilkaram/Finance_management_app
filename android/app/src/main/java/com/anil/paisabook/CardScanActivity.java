@@ -36,11 +36,13 @@ import java.util.concurrent.Executors;
  * Live card scanner. Runs ML Kit's bundled Latin text recogniser over the camera stream and
  * looks for a Luhn-valid card number and an expiry date.
  *
- * The captured number is held only in this activity: what leaves is the last four digits.
+ * The scanned number is returned so the card screen can store it. It is validated here
+ * (Luhn + agreement across frames) and never written to disk or logged by this activity.
  */
 @OptIn(markerClass = ExperimentalGetImage.class)
 public class CardScanActivity extends AppCompatActivity {
 
+    static final String EXTRA_NUMBER = "number";
     static final String EXTRA_LAST4 = "last4";
     static final String EXTRA_NETWORK = "network";
     static final String EXTRA_EXPIRY = "expiry";
@@ -161,6 +163,7 @@ public class CardScanActivity extends AppCompatActivity {
 
         finished = true;
         Intent data = new Intent();
+        data.putExtra(EXTRA_NUMBER, pan);
         data.putExtra(EXTRA_LAST4, last4);
         data.putExtra(EXTRA_NETWORK, network);
         data.putExtra(EXTRA_EXPIRY, seenExpiry);

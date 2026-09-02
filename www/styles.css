@@ -201,6 +201,9 @@ h1,h2,h3,h4{margin:0;font-weight:650}
 .kv .k{color:var(--muted)}
 .kv .v{font-weight:650;font-variant-numeric:tabular-nums}
 
+.secret{font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;letter-spacing:.5px;
+  font-variant-numeric:tabular-nums}
+
 .pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:700;
   text-transform:uppercase;letter-spacing:.4px;background:var(--surface3);color:var(--muted)}
 .pill.g{background:rgba(53,192,127,.14);color:var(--green)}

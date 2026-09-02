@@ -19,8 +19,8 @@ import com.getcapacitor.annotation.PermissionCallback;
 /**
  * Opens a live camera scanner that reads a payment card with on-device OCR.
  *
- * The full card number never crosses into the web layer: the scanner activity uses it only
- * to run the Luhn check and work out the network, then returns the last four digits.
+ * Returns the scanned number along with the last four digits, the network and the expiry,
+ * so the card screen can offer to store the card's details.
  */
 @CapacitorPlugin(
     name = "CardScanner",
@@ -70,6 +70,7 @@ public class CardScannerPlugin extends Plugin {
         }
 
         ret.put("cancelled", false);
+        ret.put("number", data.getStringExtra(CardScanActivity.EXTRA_NUMBER));
         ret.put("last4", data.getStringExtra(CardScanActivity.EXTRA_LAST4));
         ret.put("network", data.getStringExtra(CardScanActivity.EXTRA_NETWORK));
         ret.put("expiry", data.getStringExtra(CardScanActivity.EXTRA_EXPIRY));

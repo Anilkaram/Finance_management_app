@@ -3,6 +3,32 @@
 Notable changes to Paisa Book. Versions follow [semantic versioning](https://semver.org):
 `MAJOR.MINOR.PATCH` in `versionName`, with `versionCode` incremented by one per release.
 
+## [1.1.0] — 2026-09-02
+
+### Added
+- **Card details on the card screen.** Each card can now store its full number and CVV
+  alongside the expiry, for looking up when paying online.
+  - Shown masked (`•••• •••• •••• 1111`) with a **Reveal** button, and re-hidden
+    automatically after 30 seconds so nothing is left on screen.
+  - **Copy number** puts the digits on the clipboard.
+  - The number is formatted as you type (4-6-5 for Amex, fours otherwise), the last 4 and
+    the network are derived from it, and a failing Luhn checksum is flagged as a likely
+    typo without blocking the save.
+  - Both fields are optional — fill in only the last 4 by hand and nothing else is stored.
+- Exporting a backup now warns, naming the cards involved, when the file would contain full
+  numbers or CVVs. The backup is plain unencrypted JSON.
+
+### Changed
+- The card scanner now returns the full number it read, so scanning fills the whole field
+  rather than just the last four digits. It is still validated by Luhn across two
+  consecutive frames before being accepted.
+
+### Security note
+Card details are stored unencrypted in the app's local storage, and the app has no passcode
+of its own — it inherits the phone's lock screen. Anyone holding the unlocked phone can
+reveal them. Storing a CVV in particular means the phone holds everything needed for an
+online payment.
+
 ## [1.0.1] — 2026-09-01
 
 ### Fixed
@@ -58,5 +84,6 @@ arrives as one commit rather than as separate history.
 - Everything stored on-device. No account, no server, no analytics, no network requests.
 - JSON export/import for backup, written to Documents and shareable.
 
+[1.1.0]: https://github.com/Anilkaram/Finance_management_app/releases/tag/v1.1.0
 [1.0.1]: https://github.com/Anilkaram/Finance_management_app/releases/tag/v1.0.1
 [1.0.0]: https://github.com/Anilkaram/Finance_management_app/releases/tag/v1.0.0

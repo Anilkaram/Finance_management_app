@@ -164,6 +164,68 @@ function cardInterestTotal(id) {
   return S.cardEvents.filter(e => e.cardId === id && (e.kind === 'interest' || e.kind === 'fee'))
                      .reduce((a, e) => a + e.amt, 0);
 }
+/* ---------------- card number helpers ---------------- */
+const panDigits = v => String(v == null ? '' : v).replace(/[^0-9]/g, '').slice(0, 19);
+
+/** Luhn checksum — catches a mistyped digit or a transposition. */
+function luhnOk(digits) {
+  if (!digits || digits.length < 12) return false;
+  let sum = 0, doubling = false;
+  for (let i = digits.length - 1; i >= 0; i--) {
+    let n = digits.charCodeAt(i) - 48;
+    if (n < 0 || n > 9) return false;
+    if (doubling) { n *= 2; if (n > 9) n -= 9; }
+    sum += n;
+    doubling = !doubling;
+  }
+  return sum % 10 === 0;
+}
+
+/** Issuing network from the leading digits. Mirrors CardTextParser.network on the native side. */
+function panNetwork(pan) {
+  const d = panDigits(pan);
+  if (d.length < 4) return '';
+  const two = +d.slice(0, 2), four = +d.slice(0, 4);
+  if (/^(508|606|607|608|652|653|817|818|819)/.test(d)) return 'RuPay';
+  if (d[0] === '4') return 'Visa';
+  if (two >= 51 && two <= 55) return 'Mastercard';
+  if (four >= 2221 && four <= 2720) return 'Mastercard';
+  if (two === 34 || two === 37) return 'Amex';
+  if (two === 36 || two === 38 || /^(300|305)/.test(d)) return 'Diners Club';
+  if (two === 35) return 'JCB';
+  if (two === 62) return 'UnionPay';
+  if (two === 65 || d.startsWith('6011')) return 'Discover';
+  return '';
+}
+
+/** Amex prints 4-6-5; everything else groups in fours. */
+function panGroups(pan) {
+  return panNetwork(pan) === 'Amex' ? [4, 6, 5] : [4, 4, 4, 4, 3];
+}
+function groupChars(str, groups) {
+  const out = [];
+  let i = 0;
+  for (const g of groups) {
+    if (i >= str.length) break;
+    out.push(str.slice(i, i + g));
+    i += g;
+  }
+  if (i < str.length) out.push(str.slice(i));
+  return out.join(' ');
+}
+function formatPan(pan) {
+  const d = panDigits(pan);
+  return groupChars(d, panGroups(d));
+}
+
+/** Display form that keeps only the last four readable. */
+function maskPan(pan) {
+  const d = panDigits(pan);
+  if (!d) return '';
+  if (d.length <= 4) return d;
+  return groupChars('•'.repeat(d.length - 4) + d.slice(-4), panGroups(d));
+}
+
 /* Accept 1232, 12-32 or 12/32 and settle on MM/YY, so the expiry can actually be compared */
 function normalizeExpiry(v) {
   const d = String(v == null ? '' : v).replace(/[^0-9]/g, '').slice(0, 4);
@@ -861,13 +923,21 @@ function cardForm(id) {
   openSheet(c ? 'Edit card' : 'Add credit card', `
     ${scanner() ? `<button class="btn ghost" id="cScan">Scan card with camera</button>
       <div class="row-s" style="margin:7px 2px 16px;line-height:1.5;text-align:center">
-        Reads the number to fill in the last 4 digits and expiry. The full number is never saved.
+        Fills in the card number and expiry from the physical card.
       </div>` : ''}
     <div class="f"><label>Card name</label><input id="cName" type="text" placeholder="e.g. HDFC Regalia" value="${c ? esc(c.name) : ''}"></div>
     <div class="f"><label>Bank</label><input id="cBank" type="text" placeholder="HDFC" value="${c ? esc(c.bank || '') : ''}"></div>
+    <div class="f"><label>Card number</label>
+      <input id="cNumber" type="text" inputmode="numeric" autocomplete="off" placeholder="4321 1234 5678 9012" value="${c && c.number ? esc(formatPan(c.number)) : ''}">
+      <div id="cNumHint" class="row-s" style="margin-top:6px"></div>
+    </div>
     <div class="frow">
-      <div class="f"><label>Last 4 digits</label><input id="cLast4" type="text" inputmode="numeric" maxlength="4" placeholder="4321" value="${c ? esc(c.last4 || '') : ''}"></div>
       <div class="f"><label>Expiry MM/YY</label><input id="cExpiry" type="text" inputmode="numeric" maxlength="5" placeholder="08/29" value="${c ? esc(c.expiry || '') : ''}"></div>
+      <div class="f"><label>CVV</label><input id="cCvv" type="text" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="123" value="${c && c.cvv ? esc(c.cvv) : ''}"></div>
+    </div>
+    <div class="f"><label>Last 4 digits</label>
+      <input id="cLast4" type="text" inputmode="numeric" maxlength="4" placeholder="4321" value="${c ? esc(c.last4 || '') : ''}">
+      <div class="row-s" style="margin-top:6px">Filled in from the card number. Set it by hand if you would rather not store the full number.</div>
     </div>
     <div id="cNetHint" class="row-s" style="margin:-6px 2px 13px">${c && c.network ? esc(c.network) + ' card' : ''}</div>
     <div class="f"><label>Credit limit</label><input id="cLimit" type="number" inputmode="decimal" placeholder="200000" value="${c && c.limit ? c.limit : ''}"></div>
@@ -882,6 +952,32 @@ function cardForm(id) {
     ${c ? `<button class="btn danger" id="cDel">Delete card</button>` : ''}
   `, () => {
     let scannedNetwork = '';
+
+    const numIn = $('#cNumber');
+    const syncFromNumber = () => {
+      const d = panDigits(numIn.value);
+      const net = panNetwork(d);
+      if (d.length >= 4) $('#cLast4').value = d.slice(-4);
+      if (net) { scannedNetwork = net; $('#cNetHint').textContent = net + ' card'; }
+      const hint = $('#cNumHint');
+      if (!d.length) hint.textContent = '';
+      else if (d.length < 12) hint.innerHTML = '<span class="mutedtxt">' + d.length + ' digits so far</span>';
+      else if (luhnOk(d)) hint.innerHTML = '<span class="pos">&#10003; ' + (net || 'Valid') + ' number checks out</span>';
+      else hint.innerHTML = '<span class="warn">Checksum fails — worth re-reading the digits</span>';
+    };
+    numIn.addEventListener('input', () => {
+      const atEnd = numIn.selectionStart === numIn.value.length;
+      numIn.value = formatPan(numIn.value);
+      if (atEnd) numIn.setSelectionRange(numIn.value.length, numIn.value.length);
+      syncFromNumber();
+    });
+    syncFromNumber();
+
+    const cvvIn = $('#cCvv');
+    cvvIn.addEventListener('input', () => {
+      cvvIn.value = cvvIn.value.replace(/[^0-9]/g, '').slice(0, 4);
+    });
+
     const expIn = $('#cExpiry');
     if (expIn) expIn.addEventListener('input', () => {
       const pos = expIn.value.length;
@@ -897,7 +993,8 @@ function cardForm(id) {
       scanBtn.disabled = true;
       sc.scan().then(r => {
         if (r.cancelled) return;
-        if (r.last4) $('#cLast4').value = r.last4;
+        if (r.number) { $('#cNumber').value = formatPan(r.number); syncFromNumber(); }
+        else if (r.last4) $('#cLast4').value = r.last4;
         if (r.expiry) $('#cExpiry').value = r.expiry;
         if (r.network) {
           scannedNetwork = r.network;
@@ -926,7 +1023,9 @@ function cardForm(id) {
         limit: num($('#cLimit').value),
         stmtDay: num($('#cStmt').value) || null, dueDay: num($('#cDue').value) || null,
         expiry: normalizeExpiry($('#cExpiry').value),
-        network: scannedNetwork || (c ? c.network : '') || ''
+        number: panDigits($('#cNumber').value),
+        cvv: $('#cCvv').value.replace(/[^0-9]/g, '').slice(0, 4),
+        network: panNetwork($('#cNumber').value) || scannedNetwork || (c ? c.network : '') || ''
       };
       if (c) S.cards[S.cards.findIndex(x => x.id === c.id)] = rec;
       else {
@@ -1030,11 +1129,35 @@ function cardDetail(id) {
       <div class="kv"><span class="k">Fees this month</span><span class="v ${feeThis ? 'neg' : ''}">${money(feeThis)}</span></div>
       <div class="kv"><span class="k">Paid this month</span><span class="v pos">${money(payThis)}</span></div>
       <div class="kv"><span class="k">Interest + fees, all time</span><span class="v ${intTotal ? 'neg' : ''}">${money(intTotal)}</span></div>
-      ${c.network ? `<div class="kv"><span class="k">Network</span><span class="v">${esc(c.network)}</span></div>` : ''}
-      ${c.expiry ? `<div class="kv"><span class="k">Expires</span><span class="v ${expiryPast(c.expiry) ? 'neg' : ''}">${esc(c.expiry)}${expiryPast(c.expiry) ? ' · expired' : ''}</span></div>` : ''}
       <div class="kv"><span class="k">Statement day</span><span class="v">${c.stmtDay ? c.stmtDay + getOrdinal(c.stmtDay) : '—'}</span></div>
       <div class="kv"><span class="k">Payment due</span><span class="v">${due ? fmtDate(due) : '—'}</span></div>
     </div>
+
+    ${(c.number || c.cvv || c.expiry) ? `
+    <div class="sec-head" style="margin-top:18px"><h3>Card details</h3></div>
+    <div class="card" id="cardSecrets">
+      ${c.number ? `<div class="kv">
+        <span class="k">Number</span>
+        <span class="v"><span class="secret" id="secNum" data-shown="0">${maskPan(c.number)}</span></span>
+      </div>` : ''}
+      ${c.expiry ? `<div class="kv">
+        <span class="k">Expiry</span>
+        <span class="v ${expiryPast(c.expiry) ? 'neg' : ''}">${esc(c.expiry)}${expiryPast(c.expiry) ? ' · expired' : ''}</span>
+      </div>` : ''}
+      ${c.cvv ? `<div class="kv">
+        <span class="k">CVV</span>
+        <span class="v"><span class="secret" id="secCvv" data-shown="0">${'•'.repeat(c.cvv.length)}</span></span>
+      </div>` : ''}
+      ${c.network ? `<div class="kv"><span class="k">Network</span><span class="v">${esc(c.network)}</span></div>` : ''}
+      <div class="btn-row">
+        ${(c.number || c.cvv) ? `<button class="btn ghost" id="secToggle">Reveal</button>` : ''}
+        ${c.number ? `<button class="btn ghost" id="secCopy">Copy number</button>` : ''}
+      </div>
+      <div class="row-s" id="secNote" style="margin-top:10px;line-height:1.5">
+        Hidden by default and re-hidden automatically. Anyone holding your unlocked phone can
+        still reveal them — the app has no passcode of its own.
+      </div>
+    </div>` : ''}
 
     <div class="sec-head" style="margin-top:18px"><h3>Activity</h3></div>
     ${activity.length ? activity.map(a => `
@@ -1060,6 +1183,34 @@ This clears the amount due. Anything spent since the statement stays as unbilled
       S.cardEvents.push({ id: uid('e'), cardId: id, kind: 'payment', amt, date: todayISO(), note: 'Bill paid' });
       save(); render(); cardDetail(id); toast('Bill marked paid');
     });
+    const toggle = $('#secToggle');
+    if (toggle) {
+      let hideTimer = null;
+      const setShown = on => {
+        const numEl = $('#secNum'), cvvEl = $('#secCvv');
+        if (numEl) numEl.textContent = on ? formatPan(c.number) : maskPan(c.number);
+        if (cvvEl) cvvEl.textContent = on ? c.cvv : '•'.repeat(c.cvv.length);
+        if (numEl) numEl.dataset.shown = on ? '1' : '0';
+        toggle.textContent = on ? 'Hide' : 'Reveal';
+        clearTimeout(hideTimer);
+        // don't leave the number sitting on screen if the sheet is left open
+        if (on) hideTimer = setTimeout(() => { if ($('#secToggle')) setShown(false); }, 30000);
+      };
+      toggle.addEventListener('click', () => setShown(toggle.textContent === 'Reveal'));
+    }
+    if ($('#secCopy')) $('#secCopy').addEventListener('click', () => {
+      const text = panDigits(c.number);
+      const done = () => toast('Number copied — clear your clipboard after pasting');
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done).catch(() => toast('Could not copy'));
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); done(); } catch (e) { toast('Could not copy'); }
+        ta.remove();
+      }
+    });
+
     $('#aPay').addEventListener('click', () => cardEventForm(id, 'payment'));
     $('#aInt').addEventListener('click', () => cardEventForm(id, 'interest'));
     $('#aStmt').addEventListener('click', () => {
@@ -1393,6 +1544,21 @@ function billDetail(id, month) {
    BACKUP / RESTORE
    ============================================================ */
 function exportData() {
+  // The backup is plain JSON. If it carries card numbers or CVVs, say so before it leaves
+  // the app — this file gets shared into chat apps and cloud drives.
+  const withSecrets = S.cards.filter(c => c.number || c.cvv);
+  if (withSecrets.length) {
+    const names = withSecrets.map(c => c.name).join(', ');
+    if (!confirm(
+      `This backup will contain the full card number and CVV for: ${names}.
+
+` +
+      `The file is not encrypted — anyone who opens it can read them. Keep it somewhere ` +
+      `private rather than a shared drive or chat.
+
+Continue?`
+    )) return;
+  }
   const stamp = new Date().toISOString().slice(0, 10);
   const name = `paisa-book-backup-${stamp}.json`;
   const json = JSON.stringify(S, null, 2);

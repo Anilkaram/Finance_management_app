@@ -64,9 +64,13 @@ this month**, and interest + fees all-time.
 Interest is never estimated. You enter the exact finance charge the bank applied, from your
 statement — "Add interest" on the card screen. Fees and late charges work the same way.
 
+**Card details** — a card can store its number, expiry and CVV for looking up when paying
+online. They show masked with a **Reveal** button that re-hides after 30 seconds, and
+**Copy number** puts the digits on the clipboard. Both the number and CVV are optional.
+
 **Scan a card** — "Scan card with camera" on the add-card screen reads a physical card with
-on-device OCR (CameraX + ML Kit's bundled Latin recogniser) and fills in the last four
-digits, the network (Visa / Mastercard / RuPay / Amex / …) and the expiry.
+on-device OCR (CameraX + ML Kit's bundled Latin recogniser) and fills in the number, the
+network (Visa / Mastercard / RuPay / Amex / …) and the expiry.
 
 The scanner accepts a number only once it passes the Luhn checksum and reads the same on two
 consecutive frames, so a half-focused frame cannot produce a wrong number. Everything is
@@ -110,11 +114,20 @@ A few deliberate choices, so the totals don't double-count:
 Everything is stored in the app's own local storage on the phone. There is no account, no
 server, no analytics, and the app makes no network requests. Nothing leaves the device.
 
-**The full card number is never stored, and never even reaches the app's web layer.** The
-scanner activity holds it in native memory only long enough to run the Luhn check and work
-out the network, then hands back the last four digits. No photo is taken, kept or uploaded —
-frames are analysed in memory and discarded. The camera permission is requested the first
-time you tap Scan, and the app works fully without granting it.
+**Card details are stored only if you choose to enter them.** A card needs nothing but a
+name; the number and CVV fields are optional, and filling in just the last four digits keeps
+everything else off the device. When they are stored they are held unencrypted in the app's
+local storage, shown masked with a Reveal button that re-hides after 30 seconds, and
+included in backup exports — which warn you first, naming the cards involved.
+
+The app has **no passcode of its own**: it relies on the phone's lock screen, so anyone
+holding the unlocked phone can reveal what is stored. A stored CVV in particular means the
+phone holds everything needed to make an online payment. That is the trade for having the
+details to hand.
+
+No photo is taken, kept or uploaded by the scanner — frames are analysed in memory and
+discarded. The camera permission is requested the first time you tap Scan, and the app works
+fully without granting it.
 
 The flip side: uninstalling the app, or clearing its data, erases everything. Use
 **Export backup** (bottom of the Home screen) to write a timestamped JSON file to
